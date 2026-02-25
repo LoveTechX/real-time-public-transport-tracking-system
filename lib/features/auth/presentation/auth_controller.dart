@@ -1,12 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import '../data/auth_repository_impl.dart';
+import '../domain/auth_repository.dart';
 
 class AuthController {
-  late final AuthRepositoryImpl _repository;
+  final AuthRepository _repository;
 
-  AuthController() {
-    _repository = AuthRepositoryImpl(FirebaseAuth.instance);
-  }
+  AuthController(this._repository);
 
   Future<void> login(String email, String password) async {
     await _repository.login(email: email, password: password);
