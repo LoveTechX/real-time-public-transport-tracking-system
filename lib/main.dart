@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 /// Main Screens
-import 'screens/role_selection_screen.dart';
+import 'features/auth/presentation/role_selection_screen.dart';
 import 'screens/passenger_screen.dart';
 import 'screens/driver_screen.dart';
 import 'screens/conductor_screen.dart';

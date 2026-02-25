@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'auth/driver_login.dart';
-import 'auth/conductor_login.dart';
-import 'passenger_screen.dart';
+import '../../../screens/auth/driver_login.dart';
+import '../../../screens/auth/conductor_login.dart';
+import '../../../screens/passenger_screen.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
