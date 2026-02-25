@@ -1,30 +1,23 @@
 import 'package:flutter/material.dart';
-
-import '../../../screens/auth/driver_login.dart';
-import '../../../screens/auth/conductor_login.dart';
-import '../../../screens/passenger_screen.dart';
+import '../../../core/router/app_router.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
   Widget roleCard(
-      BuildContext context,
-      String title,
-      IconData icon,
-      Color color,
-      Widget screen,
-      ) {
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color color,
+    String routeName,
+  ) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => screen),
-        );
+        Navigator.pushNamed(context, routeName);
       },
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 15),
         padding: const EdgeInsets.all(20),
-
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -35,29 +28,20 @@ class RoleSelectionScreen extends StatelessWidget {
             )
           ],
         ),
-
         child: Row(
           children: [
-
             CircleAvatar(
               radius: 30,
               backgroundColor: color,
-              child: Icon(icon,color: Colors.white,size: 30),
+              child: Icon(icon, color: Colors.white, size: 30),
             ),
-
             const SizedBox(width: 20),
-
             Text(
               title,
-              style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-
             const Spacer(),
-
             const Icon(Icons.arrow_forward_ios)
-
           ],
         ),
       ),
@@ -66,64 +50,48 @@ class RoleSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
       appBar: AppBar(
         title: const Text("Smart Transport"),
         centerTitle: true,
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(20),
-
         child: Column(
-
           children: [
-
             const SizedBox(height: 20),
-
             const Icon(
               Icons.directions_bus,
               size: 80,
               color: Colors.indigo,
             ),
-
             const SizedBox(height: 10),
-
             const Text(
               "Select Role",
-              style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
-
             const SizedBox(height: 40),
-
             roleCard(
               context,
               "Passenger",
               Icons.person,
               Colors.green,
-              const PassengerScreen(),
+              AppRouter.passenger,
             ),
-
             roleCard(
               context,
               "Driver",
               Icons.drive_eta,
               Colors.blue,
-              const DriverLoginScreen(),
+              AppRouter.driver,
             ),
-
             roleCard(
               context,
               "Conductor",
               Icons.confirmation_number,
               Colors.orange,
-              const ConductorLoginScreen(),
+              AppRouter.conductor,
             ),
-
           ],
         ),
       ),
