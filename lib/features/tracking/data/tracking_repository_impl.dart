@@ -22,7 +22,9 @@ class TrackingRepositoryImpl implements TrackingRepository {
       return BusLocation(
         latitude: data['latitude'],
         longitude: data['longitude'],
-        timestamp: (data['timestamp'] as Timestamp).toDate(),
+        speed: (data['speed'] ?? 0).toDouble(),
+        status: data['status'] ?? "offline",
+        timestamp: DateTime.now(),
       );
     });
   }
