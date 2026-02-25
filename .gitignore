@@ -65,3 +65,6 @@ ios/Flutter/ephemeral/
 # Firebase
 firebase-debug.log
 firestore-debug.log
+
+android/.gradle/
+.gradle/
