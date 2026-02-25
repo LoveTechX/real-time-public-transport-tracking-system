@@ -12,4 +12,8 @@ class AuthController {
   Future<void> logout() async {
     await _repository.logout();
   }
+
+  Future<bool> isLoggedIn() async {
+    return await _repository.isLoggedIn();
+  }
 }

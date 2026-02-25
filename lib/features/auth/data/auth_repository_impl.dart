@@ -21,4 +21,9 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> logout() async {
     await _firebaseAuth.signOut();
   }
+
+  @override
+  Future<bool> isLoggedIn() async {
+    return _firebaseAuth.currentUser != null;
+  }
 }
