@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../data/auth_repository_impl.dart';
+import '../../../core/di/service_locator.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,9 +12,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  final AuthController _controller = AuthController(
-    AuthRepositoryImpl(FirebaseAuth.instance),
-  );
+  final AuthController _controller = ServiceLocator.authController;
 
   bool loading = false;
 
