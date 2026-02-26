@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../core/di/service_locator.dart';
 import '../../../features/tracking/domain/bus_location.dart';
@@ -19,6 +18,9 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
 
   double? passengerLat;
   double? passengerLng;
+
+  GoogleMapController? _mapController;
+  LatLng? _lastBusPosition;
 
   @override
   void initState() {
@@ -49,37 +51,27 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Track Bus")),
       body: StreamBuilder<BusLocation>(
         stream: ServiceLocator.trackingController.getBusLocation(busId),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                "Error: ${snapshot.error}",
-                style: const TextStyle(color: Colors.red),
-              ),
-            );
-          }
-
-          if (!snapshot.hasData) {
-            return const Center(child: Text("No Data Available"));
-          }
-
           final busLocation = snapshot.data!;
-          final LatLng position =
+
+          final LatLng busPosition =
               LatLng(busLocation.latitude, busLocation.longitude);
 
-          // 🔥 Corrected Offline Detection Logic
-          final DateTime now = DateTime.now();
-          final Duration diff = now.difference(busLocation.timestamp);
+          final bool isOffline = busLocation.status == "offline";
 
-          // Allow small negative drift tolerance
-          final bool isOffline = diff.inSeconds > 20;
+          // ✅ Safe int calculation
+          final int nowMillis = DateTime.now().toUtc().millisecondsSinceEpoch;
+
+          final int diffSeconds =
+              ((nowMillis - busLocation.timestampMillis) ~/ 1000)
+                  .clamp(0, 9999)
+                  .toInt();
 
           final distance = EtaCalculator.calculateDistance(
             busLocation.latitude,
@@ -93,82 +85,145 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
             busLocation.speed,
           );
 
-          return Column(
+          // Smooth follow
+          if (_lastBusPosition == null || _lastBusPosition != busPosition) {
+            _lastBusPosition = busPosition;
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLng(busPosition),
+            );
+          }
+
+          return Stack(
             children: [
-              Expanded(
-                flex: 3,
-                child: FlutterMap(
-                  options: MapOptions(
-                    initialCenter: position,
-                    initialZoom: 15,
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                      userAgentPackageName:
-                          "com.example.smart_transport_system",
-                    ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: position,
-                          width: 40,
-                          height: 40,
-                          child: Icon(
-                            Icons.directions_bus,
-                            color: isOffline ? Colors.grey : Colors.red,
-                            size: 40,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+              /// GOOGLE MAP
+              GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: busPosition,
+                  zoom: 15,
                 ),
+                onMapCreated: (controller) {
+                  _mapController = controller;
+                },
+                markers: {
+                  Marker(
+                    markerId: const MarkerId("bus"),
+                    position: busPosition,
+                    icon: BitmapDescriptor.defaultMarkerWithHue(
+                      isOffline
+                          ? BitmapDescriptor.hueOrange
+                          : BitmapDescriptor.hueRed,
+                    ),
+                  ),
+                  Marker(
+                    markerId: const MarkerId("passenger"),
+                    position: LatLng(passengerLat!, passengerLng!),
+                    icon: BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueBlue,
+                    ),
+                  ),
+                },
+                myLocationEnabled: true,
+                myLocationButtonEnabled: true,
+                zoomControlsEnabled: true,
               ),
-              Expanded(
-                flex: 1,
+
+              /// TOP STATUS CARD
+              Positioned(
+                top: 50,
+                left: 20,
+                right: 20,
                 child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
                     color: Colors.white,
-                    boxShadow: [
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
                       BoxShadow(
-                        blurRadius: 5,
+                        blurRadius: 10,
                         color: Colors.black12,
                       )
                     ],
                   ),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Distance: ${distance.toStringAsFixed(2)} km",
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.circle,
+                            size: 12,
+                            color: isOffline ? Colors.red : Colors.green,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Bus $busId • ${isOffline ? "Offline" : "Live"}",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
-                        isOffline
-                            ? "Bus is Offline"
-                            : busLocation.speed <= 0
-                                ? "ETA: Waiting for speed data..."
-                                : "ETA: ${eta.toStringAsFixed(1)} minutes",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: isOffline ? Colors.red : Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text("Speed: ${busLocation.speed} km/h"),
-                      Text(
-                        "Status: ${isOffline ? "offline" : "online"}",
-                        style: TextStyle(
-                          color: isOffline ? Colors.red : Colors.green,
+                        "Last updated ${diffSeconds}s ago",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
                         ),
                       ),
                     ],
                   ),
                 ),
+              ),
+
+              /// BOTTOM SHEET
+              DraggableScrollableSheet(
+                initialChildSize: 0.25,
+                minChildSize: 0.2,
+                maxChildSize: 0.5,
+                builder: (context, scrollController) {
+                  return Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                    ),
+                    child: ListView(
+                      controller: scrollController,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          "ETA: ${eta.toStringAsFixed(1)} min",
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          "Distance: ${distance.toStringAsFixed(2)} km",
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Speed: ${busLocation.speed.toStringAsFixed(1)} km/h",
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ],
           );

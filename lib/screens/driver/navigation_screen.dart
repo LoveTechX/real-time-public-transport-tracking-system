@@ -12,17 +12,18 @@ class NavigationScreen extends StatefulWidget {
 }
 
 class _NavigationScreenState extends State<NavigationScreen> {
-
   GoogleMapController? mapController;
   StreamSubscription<Position>? positionStream;
+  Timer? heartbeatTimer;
 
   bool isTracking = false;
 
   final String busId = "bus_101";
-
   final LatLng startPoint = const LatLng(31.3260, 75.5762);
 
+  // 🔥 START TRIP
   Future<void> startTrip() async {
+    if (isTracking) return; // prevent double start
 
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
@@ -35,20 +36,28 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     setState(() => isTracking = true);
 
+    // ✅ Heartbeat: keeps bus online even if GPS doesn't update
+    heartbeatTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) async {
+        await FirebaseFirestore.instance.collection('buses').doc(busId).update({
+          'timestamp': FieldValue.serverTimestamp(),
+          'status': 'online',
+        });
+      },
+    );
+
+    // ✅ Location Stream
     positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 0,
       ),
     ).listen((Position position) async {
-
-      await FirebaseFirestore.instance
-          .collection('buses')
-          .doc(busId)
-          .set({
+      await FirebaseFirestore.instance.collection('buses').doc(busId).set({
         'latitude': position.latitude,
         'longitude': position.longitude,
-        'speed': position.speed * 3.6, // m/s to km/h
+        'speed': position.speed * 3.6,
         'status': 'online',
         'timestamp': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -61,28 +70,35 @@ class _NavigationScreenState extends State<NavigationScreen> {
     });
   }
 
+  // 🔥 STOP TRIP
   Future<void> stopTrip() async {
-    await positionStream?.cancel();
+    if (!isTracking) return;
 
-    await FirebaseFirestore.instance
-        .collection('buses')
-        .doc(busId)
-        .update({
+    heartbeatTimer?.cancel();
+    heartbeatTimer = null;
+
+    await positionStream?.cancel();
+    positionStream = null;
+
+    await FirebaseFirestore.instance.collection('buses').doc(busId).update({
       'status': 'offline',
+      'timestamp': FieldValue.serverTimestamp(),
     });
 
     setState(() => isTracking = false);
   }
 
+  // 🔥 CLEANUP
   @override
   void dispose() {
+    heartbeatTimer?.cancel();
     positionStream?.cancel();
     super.dispose();
   }
 
+  // 🔥 UI
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Driver Navigation"),
@@ -97,8 +113,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
             onMapCreated: (controller) {
               mapController = controller;
             },
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
           ),
-
           Positioned(
             bottom: 30,
             left: 20,

@@ -4,6 +4,7 @@ class BusLocation {
   final double speed;
   final String status;
   final DateTime timestamp;
+  final int timestampMillis; // ✅ NEW
 
   BusLocation({
     required this.latitude,
@@ -11,5 +12,6 @@ class BusLocation {
     required this.speed,
     required this.status,
     required this.timestamp,
+    required this.timestampMillis, // ✅ NEW
   });
 }

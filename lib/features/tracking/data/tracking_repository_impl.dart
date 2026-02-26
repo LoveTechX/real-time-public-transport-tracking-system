@@ -21,14 +21,19 @@ class TrackingRepositoryImpl implements TrackingRepository {
 
       final Timestamp? firestoreTimestamp = data['timestamp'];
 
+      if (firestoreTimestamp == null) {
+        throw Exception("Timestamp not yet available");
+      }
+
+      final Timestamp ts = data['timestamp'];
+
       return BusLocation(
-        latitude: data['latitude'],
-        longitude: data['longitude'],
+        latitude: (data['latitude'] ?? 0).toDouble(),
+        longitude: (data['longitude'] ?? 0).toDouble(),
         speed: (data['speed'] ?? 0).toDouble(),
         status: data['status'] ?? "offline",
-        timestamp: firestoreTimestamp != null
-    ? firestoreTimestamp.toDate()
-    : DateTime.now(),
+        timestamp: ts.toDate(),
+        timestampMillis: ts.millisecondsSinceEpoch, // ✅ NEW
       );
     });
   }
