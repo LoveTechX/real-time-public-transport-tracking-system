@@ -5,13 +5,48 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../features/tracking/domain/bus_location.dart';
 import '../../../features/tracking/domain/eta_calculator.dart';
+import '../../../core/location/passenger_location_service.dart';
 
-class TrackBusScreen extends StatelessWidget {
+class TrackBusScreen extends StatefulWidget {
   const TrackBusScreen({super.key});
 
   @override
+  State<TrackBusScreen> createState() => _TrackBusScreenState();
+}
+
+class _TrackBusScreenState extends State<TrackBusScreen> {
+  final String busId = "bus_101";
+
+  double? passengerLat;
+  double? passengerLng;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPassengerLocation();
+  }
+
+  Future<void> _loadPassengerLocation() async {
+    try {
+      final locationService = PassengerLocationService();
+      final position = await locationService.getCurrentLocation();
+
+      setState(() {
+        passengerLat = position.latitude;
+        passengerLng = position.longitude;
+      });
+    } catch (e) {
+      debugPrint("Location Error: $e");
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    const String busId = "bus_101";
+    if (passengerLat == null || passengerLng == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text("Track Bus")),
@@ -39,19 +74,13 @@ class TrackBusScreen extends StatelessWidget {
           final LatLng position =
               LatLng(busLocation.latitude, busLocation.longitude);
 
-          // Temporary passenger location (we will replace with real GPS later)
-          const passengerLat = 30.6900;
-          const passengerLng = 76.6600;
-
-// Calculate distance
           final distance = EtaCalculator.calculateDistance(
             busLocation.latitude,
             busLocation.longitude,
-            passengerLat,
-            passengerLng,
+            passengerLat!,
+            passengerLng!,
           );
 
-// Calculate ETA
           final eta = EtaCalculator.calculateEtaMinutes(
             distance,
             busLocation.speed,
@@ -90,28 +119,15 @@ class TrackBusScreen extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // ETA PANEL
               Expanded(
                 flex: 1,
                 child: Container(
-                  width: double.infinity,
                   padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        blurRadius: 5,
-                        color: Colors.black12,
-                      )
-                    ],
-                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         "Distance: ${distance.toStringAsFixed(2)} km",
-                        style: const TextStyle(fontSize: 16),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -119,20 +135,11 @@ class TrackBusScreen extends StatelessWidget {
                             ? "ETA: Waiting for speed data..."
                             : "ETA: ${eta.toStringAsFixed(1)} minutes",
                         style: const TextStyle(
-                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        "Speed: ${busLocation.speed} km/h",
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Status: ${busLocation.status}",
-                        style: const TextStyle(fontSize: 14),
-                      ),
+                      Text("Speed: ${busLocation.speed} km/h"),
+                      Text("Status: ${busLocation.status}"),
                     ],
                   ),
                 ),
