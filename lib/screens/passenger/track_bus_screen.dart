@@ -74,6 +74,13 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
           final LatLng position =
               LatLng(busLocation.latitude, busLocation.longitude);
 
+          // 🔥 Corrected Offline Detection Logic
+          final DateTime now = DateTime.now();
+          final Duration diff = now.difference(busLocation.timestamp);
+
+          // Allow small negative drift tolerance
+          final bool isOffline = diff.inSeconds > 20;
+
           final distance = EtaCalculator.calculateDistance(
             busLocation.latitude,
             busLocation.longitude,
@@ -108,9 +115,9 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
                           point: position,
                           width: 40,
                           height: 40,
-                          child: const Icon(
+                          child: Icon(
                             Icons.directions_bus,
-                            color: Colors.red,
+                            color: isOffline ? Colors.grey : Colors.red,
                             size: 40,
                           ),
                         ),
@@ -123,6 +130,15 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
                 flex: 1,
                 child: Container(
                   padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        blurRadius: 5,
+                        color: Colors.black12,
+                      )
+                    ],
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -131,15 +147,25 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        busLocation.speed <= 0
-                            ? "ETA: Waiting for speed data..."
-                            : "ETA: ${eta.toStringAsFixed(1)} minutes",
-                        style: const TextStyle(
+                        isOffline
+                            ? "Bus is Offline"
+                            : busLocation.speed <= 0
+                                ? "ETA: Waiting for speed data..."
+                                : "ETA: ${eta.toStringAsFixed(1)} minutes",
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isOffline ? Colors.red : Colors.black,
                         ),
                       ),
+                      const SizedBox(height: 6),
                       Text("Speed: ${busLocation.speed} km/h"),
-                      Text("Status: ${busLocation.status}"),
+                      Text(
+                        "Status: ${isOffline ? "offline" : "online"}",
+                        style: TextStyle(
+                          color: isOffline ? Colors.red : Colors.green,
+                        ),
+                      ),
                     ],
                   ),
                 ),

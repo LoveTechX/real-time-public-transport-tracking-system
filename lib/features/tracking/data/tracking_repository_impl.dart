@@ -19,12 +19,16 @@ class TrackingRepositoryImpl implements TrackingRepository {
         throw Exception("Bus not found");
       }
 
+      final Timestamp? firestoreTimestamp = data['timestamp'];
+
       return BusLocation(
         latitude: data['latitude'],
         longitude: data['longitude'],
         speed: (data['speed'] ?? 0).toDouble(),
         status: data['status'] ?? "offline",
-        timestamp: DateTime.now(),
+        timestamp: firestoreTimestamp != null
+    ? firestoreTimestamp.toDate()
+    : DateTime.now(),
       );
     });
   }
